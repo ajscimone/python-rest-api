@@ -56,4 +56,4 @@ class Tasks(Base):
 #    {'title':'Play League','description':'Gotte climb those ranks', 'done':False, 'date': datetime.utcnow},
 #    {'title':'Study design patterns','description':'Ugh', 'done':False, 'date': datetime.utcnow},
 #    {'title':'Buy a cake','description':'Maybe two', 'done':False, 'date': datetime.utcnow},
-#    ])
+#    ]

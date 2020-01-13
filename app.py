@@ -1,8 +1,8 @@
 #!flask/bin/python
-
 from flask import Flask, jsonify, abort, make_response, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
 from schema import Tasks, Base
 
 app = Flask(__name__)
@@ -42,14 +42,11 @@ def get_all_tasks():
         tasks_results[vars(task)["id"]] = this_task
     return jsonify(tasks_results)
 
-# http://127.0.0.1:5000/api/task/1
 @app.route('/api/task/<int:task_id>', methods=['GET'])
 def get_task(task_id):
     session = Session()
-    row = session.query(Tasks).filter(Tasks.id == task_id).first()
+    row = session.query(Tasks).filter(Tasks.id == task_id).first()      #Need error checking here if we don't find a task
     print("found", row.title)
-    # if len(task) == 0:
-    #     abort(404)
     this_task = {}
     this_task["id"] = vars(row)["id"]
     this_task["title"] = vars(row)["title"]
@@ -57,27 +54,36 @@ def get_task(task_id):
     this_task["done"] = vars(row)["done"]
     return jsonify({'task': this_task})
 
-# Test String
-# curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Walk", "description": "Take a walk"}' http://127.0.0.1:5000/api/new
-@app.route('/api/new/', methods=['POST'])
+@app.route('/api/new', methods=['POST'])
 def create_task():
     if not request.json or not 'title' in request.json:
         abort(400)
-    new_task = Tasks(title = request.json['title'], description = request.json.get('description', "No Description"), done = False)
+    new_task = Tasks(title = request.json['title'], description = request.json.get('description', "No Description"))
     session.add(new_task)
     session.commit()
     return jsonify({"Success":"True"}), 201
 
-# Test String
-# curl -i -H "Content-Type: application/json" -X PUT -d '{"done":true}' http://localhost:5000/api/update/2
 @app.route('/api/update/<int:task_id>', methods=['PUT'])
 def update_task(task_id):
+    row = session.query(Tasks).filter(Tasks.id == task_id).first()
+    if 'title' in request.json:
+        row.title = request.json['title']
+    if 'description' in request.json:
+        row.description = request.json['description']
+    if 'done' in request.json:
+        row.done = request.json['done']
+    if 'date' in request.json:  # Could do better error handling here by checking if it matches datetime type
+        try:
+            row.date = request.json['date']
+        except SQLAlchemyError as e:
+            print(e)
+    session.commit()
     return jsonify({'result': True})
 
-# Test String
-# curl -i -H "Content-Type: application/json" -X DELETE http://localhost:5000/api/delete/2
 @app.route('/api/delete/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):
+    session.query(Tasks).filter(Tasks.id == task_id).delete()   # Need some error checking here if we try an id that doesnt exist
+    session.commit()
     return jsonify({'result': True})
 
 if __name__ == '__main__':

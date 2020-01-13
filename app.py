@@ -1,31 +1,23 @@
 #!flask/bin/python
 from flask import Flask, jsonify, abort, make_response, request
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from schema import Tasks
 
 app = Flask(__name__)
 
-tasks = [
-    {
-        'id': 1,
-        'title': u'Buy groceries',
-        'description': u'Milk, Cheese, Pizza, Fruit, Tylenol', 
-        'done': False
-    },
-    {
-        'id': 2,
-        'title': u'Learn Python',
-        'description': u'Need to find a good Python tutorial on the web', 
-        'done': False
-    }
-]
+engine = create_engine('sqlite:///tasks.db', echo = True)
+Session = sessionmaker(bind = engine)
+session = Session()
+
+tasks= []
 
 '''
     Error Handling
 '''
-
 @app.errorhandler(404)
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
-
 
 '''
     Routes
@@ -40,7 +32,15 @@ def task_index():
 
 @app.route('/api/all')
 def get_all_tasks():
-    return jsonify({'tasks': tasks})
+    tasks_results = {}
+    for task in session.query(Tasks).all():
+        this_task = {}
+        this_task["id"] = vars(task)["id"]
+        this_task["title"] = vars(task)["title"]
+        this_task["description"] = vars(task)["description"]
+        this_task["done"] = vars(task)["done"]
+        tasks_results[vars(task)["id"]] = this_task
+    return jsonify(tasks_results)
 
 @app.route('/api/task/<int:task_id>', methods=['GET'])
 def get_task(task_id):
@@ -63,6 +63,7 @@ def create_task():
     }
     tasks.append(task)
     return jsonify({'task': task}), 201
+
 # Test String
 # curl -i -H "Content-Type: application/json" -X PUT -d '{"done":true}' http://localhost:5000/api/update/2
 @app.route('/api/update/<int:task_id>', methods=['PUT'])

@@ -3,7 +3,7 @@
 from flask import Flask, jsonify, abort, make_response, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from schema import Task
+from schema import Tasks, Base
 
 app = Flask(__name__)
 
@@ -33,7 +33,7 @@ def task_index():
 def get_all_tasks():
     session = Session()
     tasks_results = {}
-    for task in session.query(Task).all():
+    for task in session.query(Tasks).all():
         this_task = {}
         this_task["id"] = vars(task)["id"]
         this_task["title"] = vars(task)["title"]
@@ -46,11 +46,16 @@ def get_all_tasks():
 @app.route('/api/task/<int:task_id>', methods=['GET'])
 def get_task(task_id):
     session = Session()
-    row = session.query(Task).filter(Task.id == 1).first()
+    row = session.query(Tasks).filter(Tasks.id == task_id).first()
     print("found", row.title)
     # if len(task) == 0:
     #     abort(404)
-    return jsonify({'task': "task"})
+    this_task = {}
+    this_task["id"] = vars(row)["id"]
+    this_task["title"] = vars(row)["title"]
+    this_task["description"] = vars(row)["description"]
+    this_task["done"] = vars(row)["done"]
+    return jsonify({'task': this_task})
 
 # Test String
 # curl -i -H "Content-Type: application/json" -X POST -d '{"title":"Walk", "description": "Take a walk"}' http://127.0.0.1:5000/api/new
@@ -58,7 +63,7 @@ def get_task(task_id):
 def create_task():
     if not request.json or not 'title' in request.json:
         abort(400)
-    new_task = Task(title = request.json['title'], description = request.json.get('description', "No Description"), done = False)
+    new_task = Tasks(title = request.json['title'], description = request.json.get('description', "No Description"), done = False)
     session.add(new_task)
     session.commit()
     return jsonify({"Success":"True"}), 201
